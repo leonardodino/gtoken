@@ -4,13 +4,7 @@ import * as nock from 'nock';
 import {GoogleToken} from '../src/index';
 
 const EMAIL = 'example@developer.gserviceaccount.com';
-const UNKNOWN_KEYFILE = './test/assets/key';
-const KEYFILE = './test/assets/key.pem';
-const P12FILE = './test/assets/key.p12';
-const KEYFILEJSON = './test/assets/key.json';
-const KEYFILENOEMAILJSON = './test/assets/key-no-email.json';
-const KEYCONTENTS = fs.readFileSync(KEYFILE, 'utf8');
-const KEYJSONCONTENTS = fs.readFileSync(KEYFILEJSON, 'utf8');
+const KEYCONTENTS = fs.readFileSync('./test/assets/key.pem', 'utf8');
 const GOOGLE_TOKEN_URLS = ['https://www.googleapis.com', '/oauth2/v4/token'];
 const GOOGLE_REVOKE_TOKEN_URLS =
     ['https://accounts.google.com', '/o/oauth2/revoke', '?token='];
@@ -19,43 +13,6 @@ const TESTDATA = {
   email: 'email@developer.gserviceaccount.com',
   scope: 'scope123',  // or space-delimited string of scopes
   key: KEYCONTENTS
-};
-
-const TESTDATA_KEYFILE = {
-  email: 'email@developer.gserviceaccount.com',
-  sub: 'developer@gmail.com',
-  scope: 'scope123',  // or space-delimited string of scopes
-  keyFile: KEYFILE
-};
-
-const TESTDATA_UNKNOWN = {
-  keyFile: UNKNOWN_KEYFILE
-};
-
-const TESTDATA_KEYFILENOEMAIL = {
-  scope: 'scope123',  // or space-delimited string of scopes
-  keyFile: KEYFILE
-};
-
-const TESTDATA_KEYFILEJSON = {
-  scope: 'scope123',  // or space-delimited string of scopes
-  keyFile: KEYFILEJSON
-};
-
-const TESTDATA_KEYFILENOEMAILJSON = {
-  scope: 'scope123',  // or space-delimited string of scopes
-  keyFile: KEYFILENOEMAILJSON
-};
-
-const TESTDATA_P12 = {
-  email: 'email@developer.gserviceaccount.com',
-  scope: 'scope123',  // or space-delimited string of scopes
-  keyFile: P12FILE
-};
-
-const TESTDATA_P12_NO_EMAIL = {
-  scope: 'scope123',  // or space-delimited string of scopes
-  keyFile: P12FILE
 };
 
 nock.disableNetConnect();
@@ -194,37 +151,7 @@ describe('.getToken()', () => {
     assert.equal(typeof gtoken.getToken, 'function');
   });
 
-  it('should read .pem keyFile from file', done => {
-    const gtoken = new GoogleToken(TESTDATA_KEYFILE);
-    const scope = createGetTokenMock();
-    gtoken.getToken((err, token) => {
-      assert.deepEqual(gtoken.key, KEYCONTENTS);
-      scope.done();
-      done();
-    });
-  });
-
-  it('should read .pem keyFile from file async', async () => {
-    const gtoken = new GoogleToken(TESTDATA_KEYFILE);
-    const scope = createGetTokenMock();
-    const token = await gtoken.getToken();
-    scope.done();
-    assert.deepEqual(gtoken.key, KEYCONTENTS);
-  });
-
-  it('should return error if iss is not set with .pem', done => {
-    const gtoken = new GoogleToken(TESTDATA_KEYFILENOEMAIL);
-    gtoken.getToken(err => {
-      assert(err);
-      if (err) {
-        assert.strictEqual(
-            (err as NodeJS.ErrnoException).code, 'MISSING_CREDENTIALS');
-        done();
-      }
-    });
-  });
-
-  it('should return err if neither key nor keyfile are set', done => {
+  it('should return err if key is not set', done => {
     const gtoken = new GoogleToken();
     gtoken.getToken((err, token) => {
       assert(err);
@@ -232,40 +159,6 @@ describe('.getToken()', () => {
     });
   });
 
-  it('should read .json key from file', done => {
-    const gtoken = new GoogleToken(TESTDATA_KEYFILEJSON);
-    const scope = createGetTokenMock();
-    gtoken.getToken((err, token) => {
-      scope.done();
-      assert.equal(err, null);
-      const parsed = JSON.parse(KEYJSONCONTENTS);
-      assert.deepEqual(gtoken.key, parsed.private_key);
-      assert.deepEqual(gtoken.iss, parsed.client_email);
-      done();
-    });
-  });
-
-  it('should accept additional claims', async () => {
-    const opts = Object.assign(
-        TESTDATA_KEYFILE, {additionalClaims: {fancyClaim: 'isFancy'}});
-    const gtoken = new GoogleToken(opts);
-    const scope = createGetTokenMock();
-    const token = await gtoken.getToken();
-    scope.done();
-    assert.deepEqual(gtoken.key, KEYCONTENTS);
-  });
-
-  it('should return error if iss is not set with .json', done => {
-    const gtoken = new GoogleToken(TESTDATA_KEYFILENOEMAILJSON);
-    gtoken.getToken(err => {
-      assert(err);
-      if (err) {
-        assert.strictEqual(
-            (err as NodeJS.ErrnoException).code, 'MISSING_CREDENTIALS');
-        done();
-      }
-    });
-  });
 
   it('should return cached token if not expired', done => {
     const gtoken = new GoogleToken(TESTDATA);
@@ -277,39 +170,6 @@ describe('.getToken()', () => {
     });
   });
 
-  it('should run gp12pem if .p12 file is given', done => {
-    const gtoken = new GoogleToken(TESTDATA_P12);
-    const scope = createGetTokenMock();
-    gtoken.getToken((err, token) => {
-      scope.done();
-      assert.equal(err, null);
-      done();
-    });
-  });
-
-  it('should return error if iss is not set with .p12', done => {
-    const gtoken = new GoogleToken(TESTDATA_P12_NO_EMAIL);
-    gtoken.getToken(err => {
-      assert(err);
-      if (err) {
-        assert.strictEqual(
-            (err as NodeJS.ErrnoException).code, 'MISSING_CREDENTIALS');
-        done();
-      }
-    });
-  });
-
-  it('should return error if unknown file type is used', done => {
-    const gtoken = new GoogleToken(TESTDATA_UNKNOWN);
-    gtoken.getToken(err => {
-      assert(err);
-      if (err) {
-        assert.strictEqual(
-            (err as NodeJS.ErrnoException).code, 'UNKNOWN_CERTIFICATE_TYPE');
-        done();
-      }
-    });
-  });
 
   describe('request', () => {
     it('should be run with correct options', done => {
@@ -322,6 +182,14 @@ describe('.getToken()', () => {
         assert.equal(token, fakeToken);
         done();
       });
+    });
+
+    it('should return promise if no callback is defined', async () => {
+      const gtoken = new GoogleToken(TESTDATA);
+      const fakeToken = 'nodeftw';
+      const scope = createGetTokenMock(200, {'access_token': fakeToken});
+      const token = await gtoken.getToken();
+      assert.equal(token, fakeToken);
     });
 
     it('should set and return correct properties on success', done => {
@@ -390,13 +258,6 @@ describe('.getToken()', () => {
         done();
       });
     });
-  });
-
-  it('should return credentials outside of getToken flow', async () => {
-    const gtoken = new GoogleToken(TESTDATA_KEYFILEJSON);
-    const creds = await gtoken.getCredentials(KEYFILEJSON);
-    assert(creds.privateKey);
-    assert(creds.clientEmail);
   });
 });
 

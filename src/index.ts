@@ -1,11 +1,7 @@
 import axios from 'axios';
-import * as fs from 'fs';
 import * as jws from 'jws';
 import * as mime from 'mime';
-import * as pify from 'pify';
 import * as querystring from 'querystring';
-
-const readFile = pify(fs.readFile);
 
 const GOOGLE_TOKEN_URL = 'https://www.googleapis.com/oauth2/v4/token';
 const GOOGLE_REVOKE_TOKEN_URL =
@@ -34,7 +30,6 @@ export interface TokenData {
 }
 
 export interface TokenOptions {
-  keyFile?: string;
   key?: string;
   email?: string;
   iss?: string;
@@ -43,19 +38,10 @@ export interface TokenOptions {
   additionalClaims?: {};
 }
 
-class ErrorWithCode extends Error {
-  constructor(message: string, public code: string) {
-    super(message);
-  }
-}
-
-let getPem: ((filename: string) => Promise<string>)|undefined;
-
 export class GoogleToken {
   token?: string|null = null;
   expiresAt?: number|null = null;
   key?: string;
-  keyFile?: string;
   iss?: string;
   sub?: string;
   scope?: string;
@@ -109,76 +95,23 @@ export class GoogleToken {
   }
 
   /**
-   * Given a keyFile, extract the key and client email if available
-   * @param keyFile Path to a json, pem, or p12 file that contains the key.
+   * Extract the key and client email if token not expired
+   * Refresh token and return it otherwise
    * @returns an object with privateKey and clientEmail properties
    */
-  async getCredentials(keyFile: string): Promise<Credentials> {
-    const mimeType = mime.getType(keyFile);
-    switch (mimeType) {
-      case 'application/json': {
-        // *.json file
-        const key = await readFile(keyFile, 'utf8');
-        const body = JSON.parse(key);
-        const privateKey = body.private_key;
-        const clientEmail = body.client_email;
-        if (!privateKey || !clientEmail) {
-          throw new ErrorWithCode(
-              'private_key and client_email are required.',
-              'MISSING_CREDENTIALS');
-        }
-        return {privateKey, clientEmail};
-      }
-      case 'application/x-x509-ca-cert': {
-        // *.pem file
-        const privateKey = await readFile(keyFile, 'utf8');
-        return {privateKey};
-      }
-      case 'application/x-pkcs12': {
-        // *.p12 file
-        // NOTE:  The loading of `google-p12-pem` is deferred for performance
-        // reasons.  The `node-forge` npm module in `google-p12-pem` adds a fair
-        // bit time to overall module loading, and is likely not frequently
-        // used.  In a future release, p12 support will be entirely removed.
-        if (!getPem) {
-          getPem = (await import('google-p12-pem')).getPem;
-        }
-        const privateKey = await getPem(keyFile);
-        return {privateKey};
-      }
-      default:
-        throw new ErrorWithCode(
-            'Unknown certificate type. Type is determined based on file extension. ' +
-                'Current supported extensions are *.json, *.pem, and *.p12.',
-            'UNKNOWN_CERTIFICATE_TYPE');
-    }
-  }
 
   private async getTokenAsync(): Promise<string|null|undefined> {
     if (!this.hasExpired()) {
       return Promise.resolve(this.token);
     }
 
-    if (!this.key && !this.keyFile) {
-      throw new Error('No key or keyFile set.');
+    if (!this.key) {
+      throw new Error('No key set.');
     }
 
-    if (!this.key && this.keyFile) {
-      const creds = await this.getCredentials(this.keyFile);
-      this.key = creds.privateKey;
-      this.iss = creds.clientEmail || this.iss;
-      if (!creds.clientEmail) {
-        this.ensureEmail();
-      }
-    }
     return this.requestToken();
   }
 
-  private ensureEmail() {
-    if (!this.iss) {
-      throw new ErrorWithCode('email is required.', 'MISSING_CREDENTIALS');
-    }
-  }
 
   /**
    * Revoke the token if one is set.
@@ -204,7 +137,6 @@ export class GoogleToken {
         email: this.iss,
         sub: this.sub,
         key: this.key,
-        keyFile: this.keyFile,
         scope: this.scope,
         additionalClaims: this.additionalClaims,
       });
@@ -217,7 +149,6 @@ export class GoogleToken {
    * @param  {object} options Configuration object.
    */
   private configure(options: TokenOptions = {}) {
-    this.keyFile = options.keyFile;
     this.key = options.key;
     this.token = this.expiresAt = this.rawToken = null;
     this.iss = options.email || options.iss;
