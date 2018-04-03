@@ -1,5 +1,5 @@
 {
-  "name": "gtoken",
+  "name": "@leonardodino/gtoken",
   "version": "2.3.0",
   "description": "Node.js Google Authentication Service Account Tokens",
   "main": "./build/src/index.js",
