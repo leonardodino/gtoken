@@ -1,6 +1,5 @@
 import axios from 'axios';
 import * as jws from 'jws';
-import * as mime from 'mime';
 import * as querystring from 'querystring';
 
 const GOOGLE_TOKEN_URL = 'https://www.googleapis.com/oauth2/v4/token';
