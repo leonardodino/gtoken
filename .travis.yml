@@ -6,6 +6,7 @@ node_js:
   - '4'
 
 script: 'yarn test'
+after_script: 'yarn codecov'
 
 notifications:
   email: false
