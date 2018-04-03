@@ -6,7 +6,6 @@
 [![devDependency Status][david-dev-image]][david-dev-url]
 [![Known Vulnerabilities][snyk-image]][snyk-url]
 [![codecov][codecov-image]][codecov-url]
-[![Greenkeeper badge][greenkeeper-image]][greenkeeper-url]
 [![style badge][gts-image]][gts-url]
 
 Node.js Google Authentication Service Account Tokens
@@ -144,8 +143,6 @@ Breaking changes:
 [david-url]: https://david-dm.org/leonardodino/gtoken
 [david-dev-image]: https://david-dm.org/leonardodino/gtoken/dev-status.svg
 [david-dev-url]: https://david-dm.org/leonardodino/gtoken?type=dev
-[greenkeeper-image]: https://badges.greenkeeper.io/leonardodino/gtoken.svg
-[greenkeeper-url]: https://greenkeeper.io/
 [gts-image]: https://img.shields.io/badge/code%20style-Google-blue.svg
 [gts-url]: https://www.npmjs.com/package/gts
 [npm-image]: https://img.shields.io/npm/v/@leonardodino/gtoken.svg
